@@ -3,9 +3,8 @@
 import json
 import os
 import sqlite3
-from datetime import datetime
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from strands.session import RepositorySessionManager, SessionRepository
 from strands.types.exceptions import SessionException
@@ -18,7 +17,7 @@ class SQLiteSessionManager(RepositorySessionManager, SessionRepository):
     def __init__(
         self,
         session_id: str,
-        db_path: Optional[str] = None,
+        db_path: str | None = None,
         **kwargs: Any,
     ) -> None:
         """Initialize SQLite session manager.
@@ -29,9 +28,9 @@ class SQLiteSessionManager(RepositorySessionManager, SessionRepository):
             **kwargs: Additional arguments passed to parent
         """
         self._db_path = db_path or os.getenv("STRANDS_SQLITE_DB_PATH", "./sessions.db")
-        self._conn: Optional[sqlite3.Connection] = None
+        self._conn: sqlite3.Connection | None = None
         self._initialize_db()
-        
+
         # Initialize parent with self as the repository
         super().__init__(session_id=session_id, session_repository=self, **kwargs)
 
@@ -39,11 +38,11 @@ class SQLiteSessionManager(RepositorySessionManager, SessionRepository):
         """Initialize database connection and schema."""
         if self._db_path != ":memory:":
             Path(self._db_path).parent.mkdir(parents=True, exist_ok=True)
-        
+
         self._conn = sqlite3.connect(self._db_path, check_same_thread=False)
         self._conn.execute("PRAGMA journal_mode=WAL")
         self._conn.execute("PRAGMA foreign_keys=ON")
-        
+
         self._conn.executescript("""
             CREATE TABLE IF NOT EXISTS sessions (
                 session_id TEXT PRIMARY KEY,
@@ -103,15 +102,13 @@ class SQLiteSessionManager(RepositorySessionManager, SessionRepository):
         except Exception as e:
             raise SessionException(f"Failed to create session: {e}")
 
-    def read_session(self, session_id: str) -> Optional[Session]:
+    def read_session(self, session_id: str) -> Session | None:
         """Read a session."""
-        cursor = self._conn.execute(
-            "SELECT data FROM sessions WHERE session_id = ?", (session_id,)
-        )
+        cursor = self._conn.execute("SELECT data FROM sessions WHERE session_id = ?", (session_id,))
         row = cursor.fetchone()
         if not row:
             return None
-        
+
         try:
             return Session.from_dict(json.loads(row[0]))
         except Exception as e:
@@ -119,9 +116,7 @@ class SQLiteSessionManager(RepositorySessionManager, SessionRepository):
 
     def delete_session(self, session_id: str) -> None:
         """Delete a session and all related data."""
-        cursor = self._conn.execute(
-            "DELETE FROM sessions WHERE session_id = ?", (session_id,)
-        )
+        cursor = self._conn.execute("DELETE FROM sessions WHERE session_id = ?", (session_id,))
         self._conn.commit()
         if cursor.rowcount == 0:
             raise SessionException(f"Session {session_id} not found")
@@ -142,7 +137,7 @@ class SQLiteSessionManager(RepositorySessionManager, SessionRepository):
         except Exception as e:
             raise SessionException(f"Failed to create agent: {e}")
 
-    def read_agent(self, session_id: str, agent_id: str) -> Optional[SessionAgent]:
+    def read_agent(self, session_id: str, agent_id: str) -> SessionAgent | None:
         """Read an agent from a session."""
         cursor = self._conn.execute(
             "SELECT data FROM agents WHERE session_id = ? AND agent_id = ?",
@@ -151,7 +146,7 @@ class SQLiteSessionManager(RepositorySessionManager, SessionRepository):
         row = cursor.fetchone()
         if not row:
             return None
-        
+
         try:
             return SessionAgent.from_dict(json.loads(row[0]))
         except Exception as e:
@@ -166,7 +161,7 @@ class SQLiteSessionManager(RepositorySessionManager, SessionRepository):
         row = cursor.fetchone()
         if not row:
             raise SessionException(f"Agent {agent.agent_id} not found in session {session_id}")
-        
+
         try:
             data = json.dumps(agent.to_dict())
             self._conn.execute(
@@ -202,7 +197,7 @@ class SQLiteSessionManager(RepositorySessionManager, SessionRepository):
         row = cursor.fetchone()
         if not row:
             raise SessionException(f"Message {message_id} not found")
-        
+
         try:
             return SessionMessage.from_dict(json.loads(row[0]))
         except Exception as e:
@@ -217,7 +212,7 @@ class SQLiteSessionManager(RepositorySessionManager, SessionRepository):
         row = cursor.fetchone()
         if not row:
             raise SessionException(f"Message {message.message_id} not found")
-        
+
         try:
             data = json.dumps(message.to_dict())
             self._conn.execute(
@@ -229,7 +224,7 @@ class SQLiteSessionManager(RepositorySessionManager, SessionRepository):
             raise SessionException(f"Failed to update message: {e}")
 
     def list_messages(
-        self, session_id: str, agent_id: str, limit: Optional[int] = None, offset: int = 0
+        self, session_id: str, agent_id: str, limit: int | None = None, offset: int = 0
     ) -> list[SessionMessage]:
         """List messages for an agent with pagination."""
         query = """
@@ -238,13 +233,13 @@ class SQLiteSessionManager(RepositorySessionManager, SessionRepository):
             ORDER BY message_id
         """
         params = [session_id, agent_id]
-        
+
         if limit is not None:
             query += " LIMIT ? OFFSET ?"
             params.extend([limit, offset])
-        
+
         cursor = self._conn.execute(query, params)
-        
+
         try:
             return [SessionMessage.from_dict(json.loads(row[0])) for row in cursor.fetchall()]
         except Exception as e:
@@ -275,7 +270,7 @@ class SQLiteSessionManager(RepositorySessionManager, SessionRepository):
         row = cursor.fetchone()
         if not row:
             raise SessionException(f"Multi-agent {multi_agent_id} not found")
-        
+
         try:
             return json.loads(row[0])
         except Exception as e:
@@ -290,7 +285,7 @@ class SQLiteSessionManager(RepositorySessionManager, SessionRepository):
         row = cursor.fetchone()
         if not row:
             raise SessionException(f"Multi-agent {multi_agent_id} not found")
-        
+
         try:
             data = json.dumps(state)
             self._conn.execute(

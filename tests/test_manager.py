@@ -17,6 +17,7 @@ def manager():
 def session():
     """Create test session."""
     from strands.types.session import SessionType
+
     return Session(session_id="test-session", session_type=SessionType.AGENT)
 
 
@@ -30,10 +31,8 @@ def agent():
 def message():
     """Create test message."""
     from strands.types.content import Message
-    return SessionMessage(
-        message_id=1,
-        message=Message(role="user", content=[{"text": "Hello"}])
-    )
+
+    return SessionMessage(message_id=1, message=Message(role="user", content=[{"text": "Hello"}]))
 
 
 class TestSessionOperations:
@@ -92,10 +91,10 @@ class TestAgentOperations:
     def test_update_agent(self, manager, session, agent):
         manager.create_session(session)
         manager.create_agent(session.session_id, agent)
-        
+
         agent.state = {"updated": "value"}
         manager.update_agent(session.session_id, agent)
-        
+
         retrieved = manager.read_agent(session.session_id, agent.agent_id)
         assert retrieved.state == {"updated": "value"}
 
@@ -108,7 +107,7 @@ class TestAgentOperations:
         manager.create_session(session)
         manager.create_agent(session.session_id, agent)
         manager.delete_session(session.session_id)
-        
+
         # Agent should be deleted with session
         with pytest.raises(SessionException, match="not found"):
             manager.read_agent(session.session_id, agent.agent_id)
@@ -121,7 +120,7 @@ class TestMessageOperations:
         manager.create_session(session)
         manager.create_agent(session.session_id, agent)
         manager.create_message(session.session_id, agent.agent_id, message)
-        
+
         retrieved = manager.read_message(session.session_id, agent.agent_id, message.message_id)
         assert retrieved.message_id == message.message_id
 
@@ -138,29 +137,28 @@ class TestMessageOperations:
 
     def test_update_message(self, manager, session, agent, message):
         from strands.types.content import Message
+
         manager.create_session(session)
         manager.create_agent(session.session_id, agent)
         manager.create_message(session.session_id, agent.agent_id, message)
-        
+
         message.message = Message(role="user", content=[{"text": "Updated"}])
         manager.update_message(session.session_id, agent.agent_id, message)
-        
+
         retrieved = manager.read_message(session.session_id, agent.agent_id, message.message_id)
         # Message is a dict after deserialization
         assert retrieved.message["content"][0]["text"] == "Updated"
 
     def test_list_messages(self, manager, session, agent):
         from strands.types.content import Message
+
         manager.create_session(session)
         manager.create_agent(session.session_id, agent)
-        
+
         for i in range(5):
-            msg = SessionMessage(
-                message_id=i,
-                message=Message(role="user", content=[{"text": f"Message {i}"}])
-            )
+            msg = SessionMessage(message_id=i, message=Message(role="user", content=[{"text": f"Message {i}"}]))
             manager.create_message(session.session_id, agent.agent_id, msg)
-        
+
         messages = manager.list_messages(session.session_id, agent.agent_id)
         assert len(messages) == 5
         assert messages[0].message_id == 0
@@ -168,16 +166,14 @@ class TestMessageOperations:
 
     def test_list_messages_with_pagination(self, manager, session, agent):
         from strands.types.content import Message
+
         manager.create_session(session)
         manager.create_agent(session.session_id, agent)
-        
+
         for i in range(10):
-            msg = SessionMessage(
-                message_id=i,
-                message=Message(role="user", content=[{"text": f"Message {i}"}])
-            )
+            msg = SessionMessage(message_id=i, message=Message(role="user", content=[{"text": f"Message {i}"}]))
             manager.create_message(session.session_id, agent.agent_id, msg)
-        
+
         messages = manager.list_messages(session.session_id, agent.agent_id, limit=3, offset=2)
         assert len(messages) == 3
         assert messages[0].message_id == 2
@@ -191,7 +187,7 @@ class TestMultiAgentOperations:
         manager.create_session(session)
         state = {"agents": ["agent1", "agent2"], "current": "agent1"}
         manager.create_multi_agent(session.session_id, "multi-1", state)
-        
+
         retrieved = manager.read_multi_agent(session.session_id, "multi-1")
         assert retrieved == state
 
@@ -208,10 +204,10 @@ class TestMultiAgentOperations:
         manager.create_session(session)
         state = {"agents": ["agent1"], "current": "agent1"}
         manager.create_multi_agent(session.session_id, "multi-1", state)
-        
+
         new_state = {"agents": ["agent1", "agent2"], "current": "agent2"}
         manager.update_multi_agent(session.session_id, "multi-1", new_state)
-        
+
         retrieved = manager.read_multi_agent(session.session_id, "multi-1")
         assert retrieved == new_state
 

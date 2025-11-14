@@ -14,7 +14,7 @@ A lightweight, local SQLite-based session manager for Strands agents. Provides a
 ## Installation
 
 ```bash
-pip install strands-sqlite-session-manager
+pip install "git+https://github.com/afarntrog/strands-sqlite-session-manager"
 ```
 
 ## Quick Start

@@ -91,3 +91,6 @@ All tables include automatic timestamps and proper foreign key relationships wit
 ## License
 
 Apache License 2.0
+
+# Disclaimer
+This is strictly a **community** created package. This is not supported/affiliated or built by AWS.
